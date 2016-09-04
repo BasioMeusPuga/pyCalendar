@@ -28,6 +28,12 @@ def calendar_show(timeframe):
 
 	# Display all events that occur today
 	if timeframe == "BlankForAllIntensivePurposes":
+
+		today_formatted = str(today.day).zfill(2) + "-" + str(today.month).zfill(2) + "-" + str(today.year)
+		status = database.execute("SELECT Date FROM status WHERE Date = '%s'" % (today_formatted)).fetchone()
+		if status is None:
+			exit(1)
+
 		events = database.execute("SELECT Name,Date,Repeat FROM events WHERE Date LIKE '%s'" % ('%' + str(today.day).zfill(2) + "-" + str(today.month).zfill(2) + '%')).fetchall()
 		for i in events:
 			date_object = datetime.datetime.strptime(i[1], '%d-%m-%Y')
