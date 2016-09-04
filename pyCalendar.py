@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-import sys
 import sqlite3
 import datetime
+import argparse
 from os.path import realpath, dirname, exists
 
 calendar_path = dirname(realpath(__file__)) + "/calendar.db"
@@ -22,19 +22,61 @@ class colors:
 	ENDC = '\033[0m'
 
 
-def calendar_show():
+def calendar_show(timeframe):
 
-	events = database.execute("SELECT Name,Date,Repeat FROM events WHERE Date LIKE '%s'" % ('%' + str(today.day).zfill(2) + "-" + str(today.month).zfill(2) + '%')).fetchall()
 	events_to_show = []
-	for i in events:
-		date_object = datetime.datetime.strptime(i[1], '%d-%m-%Y')
-		event_year = int(date_object.strftime('%Y'))
-		event_repeat = i[2]
 
-		if event_repeat == "yes" or (event_repeat == "no" and event_year == today.year):
-			events_to_show.append(i[0])
+	# Display all events that occur today
+	if timeframe == "BlankForAllIntensivePurposes":
+		events = database.execute("SELECT Name,Date,Repeat FROM events WHERE Date LIKE '%s'" % ('%' + str(today.day).zfill(2) + "-" + str(today.month).zfill(2) + '%')).fetchall()
+		for i in events:
+			date_object = datetime.datetime.strptime(i[1], '%d-%m-%Y')
+			event_year = int(date_object.strftime('%Y'))
+			event_repeat = i[2]
 
-	print(", ".join(events_to_show))
+			if event_repeat == "yes" or (event_repeat == "no" and event_year == today.year):
+				events_to_show.append(i[0])
+
+		print(", ".join(events_to_show))
+
+	# Display all events in the provided timeframe
+	else:
+		if timeframe.isdigit() is True:
+			tf_pf = "+"
+			tf_days = int(timeframe)
+		else:
+			tf_pf = timeframe[0]
+			tf_days = int(timeframe[1:])
+
+		valid_dates = []
+		valid_dates_cfr = []
+		for i in range(tf_days + 1):
+			my_timedelta = datetime.timedelta(days=i)
+			if tf_pf == "+":
+				next_valid_date = str(today + my_timedelta)
+			elif tf_pf == "-":
+				next_valid_date = str(today - my_timedelta)
+
+			date_object = datetime.datetime.strptime(next_valid_date, '%Y-%m-%d')
+			next_valid_date = date_object.strftime('%d-%m-%Y')
+			valid_dates.append(next_valid_date)
+			next_valid_date_cfr = date_object.strftime('%d-%m')
+			valid_dates_cfr.append(next_valid_date_cfr)
+
+		events = database.execute("SELECT Name,Date,Repeat FROM events").fetchall()
+		for j in events:
+			if j[1] in valid_dates or (j[1][:5] in valid_dates_cfr and j[2] == "yes"):
+				date_object = datetime.datetime.strptime(j[1][:5], '%d-%m')
+				sexy_date = date_object.strftime('%A, %d %B')
+				days_away = abs(today - datetime.date(today.year, int(j[1][3:5]), int(j[1][:2])))
+				events_to_show.append([j[0], sexy_date, days_away.days])
+				events_to_show = sorted(events_to_show, key=lambda x: x[2])
+
+		template = "{0:20}{1:30}{2:10}"
+		print()
+		print(template.format(colors.GREEN + "Name", "Date".rjust(35), "±Days".rjust(10) + colors.ENDC))
+		for k in events_to_show:
+			print(template.format(k[0], k[1].rjust(30), k[2]))
 
 
 def calendar_add():
@@ -75,15 +117,21 @@ def calendar_seen():
 
 
 def main():
-	try:
-		if sys.argv[1] == "--show":
-			calendar_show()
-		elif sys.argv[1] == "--add":
-			calendar_add()
-		elif sys.argv[1] == "--seen":
-			calendar_seen()
-	except IndexError:
-		print(colors.WHITE + "Usage: --show / --add / --seen")
+	parser = argparse.ArgumentParser(description='A CLI CALENDAR. IT\'S THE FUTURE.', add_help=False)
+	parser.add_argument('--add', action='store_true', help='Add date to calendar', required=False)
+	parser.add_argument('--help', help='This helpful message', action='help')
+	parser.add_argument('--seen', action='store_true', help='Toggle seen status for today\'s events', required=False)
+	parser.add_argument('--show', type=str, nargs='?', const='BlankForAllIntensivePurposes', help='Show calendar events', metavar="±days", required=False)
+	args = parser.parse_args()
+
+	if args.add:
+		calendar_add()
+	elif args.seen:
+		calendar_seen()
+	elif args.show:
+		calendar_show(args.show)
+	else:
+		parser.print_help()
 
 main()
 database.close()
