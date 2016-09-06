@@ -72,12 +72,12 @@ def calendar_show(timeframe):
 		events = database.execute("SELECT Name,Date,Repeat FROM events").fetchall()
 		for j in events:
 			if j[1] in valid_dates or (j[1][:5] in valid_dates_cfr and j[2] == "yes"):
-				date_object = datetime.datetime.strptime(j[1][:5], '%d-%m')
+				date_object = datetime.datetime.strptime(j[1][:5] + "-" + str(today.year), '%d-%m-%Y')
 				sexy_date = date_object.strftime('%A, %d %B')
 				days_away = abs(today - datetime.date(today.year, int(j[1][3:5]), int(j[1][:2])))
 				events_to_show.append([j[0], sexy_date, days_away.days])
-				events_to_show = sorted(events_to_show, key=lambda x: x[2])
-
+				
+		events_to_show = sorted(events_to_show, key=lambda x: x[2])
 		template = "{0:20}{1:30}{2:10}"
 		print()
 		print(template.format(colors.GREEN + "Name", "Date".rjust(35), "±Days".rjust(10) + colors.ENDC))
