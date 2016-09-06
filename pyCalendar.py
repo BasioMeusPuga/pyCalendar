@@ -14,6 +14,7 @@ if not exists(calendar_path):
 database = sqlite3.connect(calendar_path)
 today = datetime.date.today()
 
+
 class colors:
 	GREEN = '\033[92m'
 	RED = '\033[91m'
@@ -65,20 +66,23 @@ def calendar_show(timeframe):
 			valid_dates_cfr.append(next_valid_date[5:])
 
 		events = database.execute("SELECT Name,Date,Repeat FROM events").fetchall()
-		days_till_eoy = abs(today - datetime.date(today.year, 12, 31))
-		
-		for j in events:
-			event_date = int(j[1][8:])
-			event_month = int(j[1][5:7])
-			
-			if j[1] in valid_dates or (j[1][5:] in valid_dates_cfr and j[2] == "yes"):
-				date_object = datetime.datetime.strptime(str(today.year) + "-" + j[1][5:], '%Y-%m-%d')
-				sexy_date = date_object.strftime('%A, %d %B %Y')
 
-				days_away = abs(today - datetime.date(today.year, event_month, event_date))
-				if days_away > days_till_eoy and tf_pf == "+":
-					days_away = abs(today - datetime.date(today.year + 1, event_month, event_date))
-				events_to_show.append([j[0], sexy_date, days_away.days])
+		for check_date in valid_dates:
+			for j in events:
+				event_date_full = j[1]
+				event_date_dm = j[1][5:]
+				event_date = int(j[1][8:])
+				event_month = int(j[1][5:7])
+
+				if check_date == event_date_full or (check_date[5:] == event_date_dm and j[2]) == "yes":
+					check_date_year = int(check_date[:4])
+					days_away = abs(today - datetime.date(check_date_year, event_month, event_date))
+					date_object = datetime.datetime.strptime(str(check_date_year) + "-" + event_date_dm, '%Y-%m-%d')
+					sexy_date = date_object.strftime('%A, %d %B %Y')
+					if j[2] == "no":
+						events_to_show.append([j[0], sexy_date, days_away.days, "red"])
+					else:
+						events_to_show.append([j[0], sexy_date, days_away.days, "green"])
 
 		if events_to_show == []:
 			print(colors.RED + "Nope." + colors.ENDC)
@@ -88,7 +92,10 @@ def calendar_show(timeframe):
 			print()
 			print(template.format(colors.GREEN + "Name", "Date".rjust(35), "±Days".rjust(10) + colors.ENDC))
 			for k in events_to_show:
-				print(template.format(k[0], k[1].rjust(30), k[2]))
+				if k[3] == "red":
+					print(template.format(colors.RED + k[0] + colors.ENDC, k[1].rjust(39), k[2]))
+				else:
+					print(template.format(k[0], k[1].rjust(30), k[2]))
 
 
 def calendar_search(event_name):
@@ -97,9 +104,9 @@ def calendar_search(event_name):
 	for i in events:
 		event_date = int(i[1][8:])
 		event_month = int(i[1][5:7])
-			
+
 		try:
-			next_year = False			
+			next_year = False
 			if event_month < today.month or (event_date < today.day and event_month == today.month):
 				if i[2] == "no":
 					raise
@@ -117,7 +124,7 @@ def calendar_search(event_name):
 			events_to_show.append([i[0], sexy_date, days_away.days])
 		except:
 			pass
-	
+
 	if events_to_show == []:
 			print(colors.RED + "Nope." + colors.ENDC)
 	else:
@@ -127,6 +134,7 @@ def calendar_search(event_name):
 		print(template.format(colors.GREEN + "Name", "Date".rjust(35), "±Days".rjust(10) + colors.ENDC))
 		for k in events_to_show:
 			print(template.format(k[0], k[1].rjust(30), k[2]))
+
 
 def calendar_add():
 
