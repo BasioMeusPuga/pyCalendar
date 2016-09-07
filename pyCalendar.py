@@ -5,6 +5,8 @@ import datetime
 import argparse
 from os.path import realpath, dirname, exists
 
+""" Todo: Alarms, .ics parsing """
+
 calendar_path = dirname(realpath(__file__)) + "/calendar.db"
 if not exists(calendar_path):
 	database = sqlite3.connect(calendar_path)
@@ -16,9 +18,11 @@ today = datetime.date.today()
 
 
 class colors:
+	CYAN = '\033[96m'
 	GREEN = '\033[92m'
 	RED = '\033[91m'
 	WHITE = '\033[97m'
+	YELLOW = '\033[93m'
 	ENDC = '\033[0m'
 
 
@@ -30,7 +34,7 @@ def calendar_show(timeframe):
 	if timeframe == "BlankForAllIntensivePurposes":
 
 		status = database.execute("SELECT Date FROM status WHERE Date = '%s'" % (today)).fetchone()
-		if status is None:
+		if status is not None:
 			exit(1)
 
 		events = database.execute("SELECT Name,Date,Repeat FROM events WHERE Date LIKE '%s'" % ('%' + str(today.month).zfill(2) + "-" + str(today.day).zfill(2) + '%')).fetchall()
@@ -80,9 +84,9 @@ def calendar_show(timeframe):
 					date_object = datetime.datetime.strptime(str(check_date_year) + "-" + event_date_dm, '%Y-%m-%d')
 					sexy_date = date_object.strftime('%A, %d %B %Y')
 					if j[2] == "no":
-						events_to_show.append([j[0], sexy_date, days_away.days, "red"])
+						events_to_show.append([j[0], sexy_date, days_away.days, "xrep"])
 					else:
-						events_to_show.append([j[0], sexy_date, days_away.days, "green"])
+						events_to_show.append([j[0], sexy_date, days_away.days, "rep"])
 
 		if events_to_show == []:
 			print(colors.RED + "Nope." + colors.ENDC)
@@ -90,10 +94,14 @@ def calendar_show(timeframe):
 			events_to_show = sorted(events_to_show, key=lambda x: x[2])
 			template = "{0:35}{1:30}{2:10}"
 			print()
-			print(template.format(colors.GREEN + "Name", "Date".rjust(35), "±Days".rjust(10) + colors.ENDC))
+			if tf_pf == "-":
+				day_display = colors.RED + "-Days".rjust(10) + colors.ENDC
+			else:
+				day_display = colors.GREEN + "+Days".rjust(10) + colors.ENDC
+			print(template.format(colors.CYAN + "Name", "Date".rjust(35), day_display))
 			for k in events_to_show:
-				if k[3] == "red":
-					print(template.format(colors.RED + k[0] + colors.ENDC, k[1].rjust(39), k[2]))
+				if k[3] == "xrep":
+					print(template.format(colors.YELLOW + k[0] + colors.ENDC, k[1].rjust(39), k[2]))
 				else:
 					print(template.format(k[0], k[1].rjust(30), k[2]))
 
@@ -131,7 +139,7 @@ def calendar_search(event_name):
 		events_to_show = sorted(events_to_show, key=lambda x: x[2])
 		template = "{0:35}{1:30}{2:10}"
 		print()
-		print(template.format(colors.GREEN + "Name", "Date".rjust(35), "±Days".rjust(10) + colors.ENDC))
+		print(template.format(colors.GREEN + "Name", "Date".rjust(35), "+Days".rjust(10) + colors.ENDC))
 		for k in events_to_show:
 			print(template.format(k[0], k[1].rjust(30), k[2]))
 
@@ -158,7 +166,7 @@ def calendar_add():
 def calendar_seen():
 
 	status = database.execute("SELECT Date FROM status WHERE Date = '%s'" % (today)).fetchone()
-	if status is not None:
+	if status is None:
 		print("Today's events are marked " + colors.GREEN + "unseen" + colors.ENDC)
 	else:
 		print("Today's events are marked " + colors.RED + "seen" + colors.ENDC)
